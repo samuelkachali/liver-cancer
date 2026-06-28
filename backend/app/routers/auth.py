@@ -17,7 +17,6 @@ from app.auth import (
 )
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.log_actions import log_action
 from app.models.user import User, UserRole, UserStatus
 from app.schemas import TokenResponse, UserLogin, UserRegister, UserResponse
 
@@ -70,15 +69,6 @@ async def login(payload: UserLogin, db: AsyncSession = Depends(get_db)) -> Token
         )
 
     token, _, _ = create_access_token(user.id)
-    
-    await log_action(
-        db=db,
-        actor_id=user.id,
-        action="login",
-        resource_type="auth",
-        details={"role": user.role.value},
-    )
-    
     return TokenResponse(access_token=token, user=UserResponse.model_validate(user))
 
 
