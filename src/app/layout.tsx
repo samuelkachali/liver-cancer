@@ -10,7 +10,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "MediVision AI",
-  description: "Role-based liver and colon cancer detection frontend",
+  description: "Role-based liver cancer detection frontend",
 };
 
 export default function RootLayout({

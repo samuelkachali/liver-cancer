@@ -26,7 +26,7 @@ export default function Home() {
         <section className="relative mx-auto max-w-6xl px-6 py-16 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center overflow-hidden">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <h1 className="text-4xl lg:text-5xl font-bold leading-tight text-zinc-900">
-              AI-Assisted Liver & Colon Cancer Detection
+              AI-Assisted Liver Cancer Detection
             </h1>
             <p className="mt-4 text-lg text-zinc-600">
               A role-based clinical interface for nurses, doctors, and admins to manage patients, upload scans, and generate diagnostic reports.
@@ -41,7 +41,7 @@ export default function Home() {
             </div>
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.1 }} className="rounded-xl border border-zinc-200 p-6 shadow-sm bg-white">
-            <Image src="/hero-medical.svg" alt="Medical AI visualization" width={800} height={600} className="w-full h-auto" />
+            <Image src="/liver.jpg" alt="Medical AI visualization" width={800} height={600} className="w-full h-auto" />
           </motion.div>
           {/* Floating medical icons */}
           <motion.div className="absolute z-0" initial={{ opacity: 0 }} animate={{ opacity: 0.25 }} transition={{ duration: 1 }}>
