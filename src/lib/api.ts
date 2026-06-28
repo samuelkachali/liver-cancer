@@ -23,8 +23,9 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({ detail: 'An error occurred' }));
-    throw new Error(error.detail || 'Request failed');
+    const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
+    const message = typeof error.detail === 'string' ? error.detail : JSON.stringify(error.detail);
+    throw new Error(message || 'Request failed');
   }
 
   return response.json();

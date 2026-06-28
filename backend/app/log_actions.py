@@ -1,4 +1,3 @@
-import json
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +19,7 @@ async def log_action(
             action=action,
             resource_type=resource_type,
             resource_id=resource_id,
-            details=json.dumps(details) if details else None,
+            details=details or {},
         )
     )
     await db.commit()
