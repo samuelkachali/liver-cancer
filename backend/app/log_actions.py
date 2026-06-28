@@ -1,6 +1,5 @@
 import uuid
 
-from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.log import AuditLog
@@ -25,5 +24,8 @@ async def log_action(
             )
         )
         await db.commit()
-    except ProgrammingError:
-        await db.rollback()
+    except Exception:
+        try:
+            await db.rollback()
+        except Exception:
+            pass
