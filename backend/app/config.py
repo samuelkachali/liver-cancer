@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     secret_key: str = "change-me-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24
-    cors_origins: str = "http://localhost:3000,https://liver-cancer.vercel.app"
+    cors_origins: str = "http://localhost:3000,https://liver-cancer.vercel.app,https://liver-cancer-git-main-samuelkachalis-projects.vercel.app"
     upload_dir: str = "uploads"
     
     # Email configuration
