@@ -22,13 +22,35 @@ import {
   Users,
   Shield,
 } from "lucide-react";
+import { api } from "@/lib/api";
+
+interface UserInfo {
+  full_name: string;
+  email: string;
+  role: string;
+}
 
 export default function Sidebar() {
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const pathname = usePathname();
   const isNurse = pathname?.startsWith("/dashboard/nurse");
   const isDoctor = pathname?.startsWith("/dashboard/doctor");
   const isAdmin = pathname?.startsWith("/dashboard/admin");
+
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const data = await api.auth.me();
+        const u = data as any;
+        setUser({ full_name: u.full_name || "", email: u.email || "", role: u.role || "" });
+      } catch {
+        // ignore
+      }
+    };
+    fetchMe();
+  }, []);
+
   const nav = isNurse
     ? [
         { href: "/dashboard/nurse", label: "Dashboard Overview", icon: Home },
@@ -61,7 +83,22 @@ export default function Sidebar() {
         { href: "/dashboard/doctor", label: "Doctor Dashboard", icon: Stethoscope },
         { href: "/dashboard/admin", label: "Admin Dashboard", icon: LayoutDashboard },
       ];
-  // Listen for global events to control mobile drawer from header
+
+  const initials = user
+    ? user.full_name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+    : isDoctor
+    ? "DR"
+    : isAdmin
+    ? "AD"
+    : "N";
+
+  const displayName = user?.full_name || (isDoctor ? "Dr. Doctor" : isAdmin ? "Admin User" : "Nurse User");
+  const displayEmail = user?.email || (isDoctor ? "doctor@example.com" : isAdmin ? "admin@example.com" : "nurse@example.com");
+
   useEffect(() => {
     const openHandler = () => setOpen(true);
     const closeHandler = () => setOpen(false);
@@ -75,7 +112,6 @@ export default function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-0 sm:w-64 md:w-20 lg:w-64 border-0 sm:border-r border-zinc-200 bg-white overflow-visible transition-all z-80">
-      {/* Brand header */}
       <div className="h-14 px-4 border-b border-zinc-200 flex items-center gap-2">
         <Image src="/logo.svg" alt="MediVision AI" width={20} height={20} />
         <span className="text-sm font-semibold text-zinc-900 hidden lg:inline">MediVision AI</span>
@@ -100,17 +136,16 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      {/* Profile drop-up */}
       <div className="hidden sm:block absolute bottom-0 left-0 right-0 border-t border-zinc-200 p-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="w-full flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-blue-50">
               <Avatar className="h-7 w-7">
-                <AvatarFallback>{isDoctor ? "DR" : isAdmin ? "AD" : "N"}</AvatarFallback>
+                <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <div className="hidden lg:block text-left">
-                <div className="text-sm font-medium text-zinc-900">{isDoctor ? "Dr. Doctor" : isAdmin ? "Admin User" : "Nurse User"}</div>
-                <div className="text-xs text-zinc-500">{isDoctor ? "doctor@example.com" : isAdmin ? "admin@example.com" : "nurse@example.com"}</div>
+                <div className="text-sm font-medium text-zinc-900">{displayName}</div>
+                <div className="text-xs text-zinc-500">{displayEmail}</div>
               </div>
             </button>
           </DropdownMenuTrigger>
@@ -124,7 +159,6 @@ export default function Sidebar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {/* Mobile Drawer */}
       <div
         className={cn("fixed inset-0 z-70 bg-black/20", open ? "block sm:hidden" : "hidden")}
         onClick={() => {
@@ -164,13 +198,12 @@ export default function Sidebar() {
             </Link>
           ))}
         </div>
-        {/* Mobile drawer profile actions */}
         <div className="absolute bottom-0 left-0 right-0 border-t border-zinc-200 p-3 bg-white">
           <div className="flex items-center gap-3 mb-2">
             <Avatar className="h-7 w-7">
-              <AvatarFallback>{isDoctor ? "DR" : isAdmin ? "AD" : "N"}</AvatarFallback>
+              <AvatarFallback>{initials}</AvatarFallback>
             </Avatar>
-            <div className="text-sm font-medium text-zinc-900">{isDoctor ? "Dr. Doctor" : isAdmin ? "Admin User" : "Nurse User"}</div>
+            <div className="text-sm font-medium text-zinc-900">{displayName}</div>
           </div>
           <div className="flex items-center gap-2">
             <Link

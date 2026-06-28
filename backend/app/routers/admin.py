@@ -7,9 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import hash_password
 from app.database import get_db
 from app.dependencies import require_roles
+from app.email import send_rejection_email, send_verification_email
+from app.log_actions import log_action
 from app.models.patient import Patient
 from app.models.user import User, UserRole, UserStatus
-from app.schemas import DoctorListItem, UserRegister, UserResponse
+from app.schemas import DoctorListItem, LogResponse, UserRegister, UserResponse
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -28,7 +30,15 @@ async def list_users(
         query = query.where(User.status == status_filter)
 
     result = await db.execute(query)
-    return list(result.scalars().all())
+    users = list(result.scalars().all())
+    await log_action(
+        db=db,
+        actor_id=_.id,
+        action="list_users",
+        resource_type="users",
+        details={"role": role, "status_filter": status_filter, "count": len(users)},
+    )
+    return users
 
 
 @router.get("/users/pending", response_model=list[UserResponse])
@@ -46,7 +56,7 @@ async def list_pending_users(
 async def verify_user(
     user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin)),
+    admin: User = Depends(require_roles(UserRole.admin)),
 ) -> User:
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -56,6 +66,18 @@ async def verify_user(
     user.status = UserStatus.verified
     await db.commit()
     await db.refresh(user)
+    
+    await log_action(
+        db=db,
+        actor_id=admin.id,
+        action="verify_user",
+        resource_type="user",
+        resource_id=user_id,
+        details={"email": user.email},
+    )
+    
+    await send_verification_email(user.email, user.full_name)
+    
     return user
 
 
@@ -76,6 +98,18 @@ async def reject_user(
     user.status = UserStatus.rejected
     await db.commit()
     await db.refresh(user)
+    
+    await log_action(
+        db=db,
+        actor_id=admin.id,
+        action="reject_user",
+        resource_type="user",
+        resource_id=user_id,
+        details={"email": user.email},
+    )
+    
+    await send_rejection_email(user.email, user.full_name)
+    
     return user
 
 
@@ -93,6 +127,15 @@ async def remove_user(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
+    await log_action(
+        db=db,
+        actor_id=admin.id,
+        action="remove_user",
+        resource_type="user",
+        resource_id=user_id,
+        details={"email": user.email, "role": user.role.value},
+    )
+
     await db.delete(user)
     await db.commit()
 
@@ -101,7 +144,7 @@ async def remove_user(
 async def create_user(
     payload: UserRegister,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(require_roles(UserRole.admin)),
+    admin: User = Depends(require_roles(UserRole.admin)),
 ) -> User:
     email = payload.email.lower()
     existing = await db.execute(select(User).where(User.email == email))
@@ -119,6 +162,16 @@ async def create_user(
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    
+    await log_action(
+        db=db,
+        actor_id=admin.id,
+        action="create_user",
+        resource_type="user",
+        resource_id=user.id,
+        details={"email": user.email, "role": user.role.value},
+    )
+    
     return user
 
 

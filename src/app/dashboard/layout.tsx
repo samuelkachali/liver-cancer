@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import RoleBadge from "@/components/RoleBadge";
 import Link from "next/link";
 import { Bell } from "lucide-react";
+import { api } from "@/lib/api";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -16,8 +17,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     : pathname?.startsWith("/dashboard/admin")
     ? "Admin"
     : "Doctor";
-  const initials = role === "Doctor" ? "DR" : role === "Admin" ? "AD" : "N";
-  // Sync drawer state with Sidebar events
+
   useEffect(() => {
     const onOpen = () => setDrawerOpen(true);
     const onClose = () => setDrawerOpen(false);
@@ -29,19 +29,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
   }, []);
 
-  // Load doctor assigned patients count (placeholder/local value)
   useEffect(() => {
     if (role === "Doctor") {
-      const stored = Number((typeof window !== "undefined" && window.localStorage.getItem("assignedPatientsCount")) || "");
-      if (Number.isFinite(stored) && stored >= 0) {
-        setAssignedCount(stored);
-      } else {
-        setAssignedCount(6);
-      }
+      const fetchAssigned = async () => {
+        try {
+          const patients = await api.patients.list();
+          setAssignedCount(Array.isArray(patients) ? patients.length : 0);
+        } catch {
+          setAssignedCount(0);
+        }
+      };
+      fetchAssigned();
     } else {
       setAssignedCount(0);
     }
   }, [role]);
+
+  const initials = role === "Doctor" ? "DR" : role === "Admin" ? "AD" : "N";
+
   return (
     <div className="min-h-screen bg-white">
       <Sidebar />

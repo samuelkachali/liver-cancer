@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field
 
 from app.models.diagnosis import DiagnosisStatus
+from app.models.log import AuditLog as AuditLogModel
 from app.models.user import UserRole, UserStatus
 
 
@@ -116,5 +117,17 @@ class DoctorListItem(BaseModel):
     email: EmailStr
     specialization: str | None
     assigned_patient_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class LogResponse(BaseModel):
+    id: UUID
+    actor_id: UUID | None
+    action: str
+    resource_type: str | None
+    resource_id: UUID | None
+    details: str | None
+    created_at: datetime
 
     model_config = {"from_attributes": True}

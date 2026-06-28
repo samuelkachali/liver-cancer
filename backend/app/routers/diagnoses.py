@@ -1,4 +1,3 @@
-import random
 import uuid
 from decimal import Decimal
 
@@ -8,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_roles
+from app.log_actions import log_action
 from app.models.diagnosis import Diagnosis, DiagnosisStatus
 from app.models.patient import Patient
 from app.models.user import User, UserRole
@@ -16,10 +16,6 @@ from app.schemas import DiagnosisCreate, DiagnosisResponse, DiagnosisUpdate
 router = APIRouter(prefix="/diagnoses", tags=["diagnoses"])
 
 CANCER_TYPE = "liver"
-
-
-def _mock_ai_confidence() -> Decimal:
-    return Decimal(str(random.randint(75, 98)))
 
 
 @router.post("", response_model=DiagnosisResponse, status_code=status.HTTP_201_CREATED)
@@ -35,12 +31,16 @@ async def create_diagnosis(
     if patient.assigned_doctor_id != doctor.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Patient not assigned to you")
 
-    confidence = payload.confidence if payload.confidence else _mock_ai_confidence()
+    if payload.confidence is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Confidence score is required"
+        )
     diagnosis = Diagnosis(
         patient_id=patient.id,
         doctor_id=doctor.id,
         cancer_type=CANCER_TYPE,
-        confidence=confidence,
+        confidence=payload.confidence,
         scan_url=payload.scan_url,
         notes=payload.notes,
         status=DiagnosisStatus.pending,
@@ -48,6 +48,16 @@ async def create_diagnosis(
     db.add(diagnosis)
     await db.commit()
     await db.refresh(diagnosis)
+    
+    await log_action(
+        db=db,
+        actor_id=doctor.id,
+        action="create_diagnosis",
+        resource_type="diagnosis",
+        resource_id=diagnosis.id,
+        details={"patient_id": str(patient.id), "cancer_type": CANCER_TYPE},
+    )
+    
     return diagnosis
 
 
@@ -65,18 +75,10 @@ async def run_ai_diagnosis(
     if patient.assigned_doctor_id != doctor.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Patient not assigned to you")
 
-    diagnosis = Diagnosis(
-        patient_id=patient.id,
-        doctor_id=doctor.id,
-        cancer_type=CANCER_TYPE,
-        confidence=_mock_ai_confidence(),
-        scan_url=scan_url,
-        status=DiagnosisStatus.pending,
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
+        detail="AI diagnosis endpoint requires integration with ML model. Use POST /diagnoses with explicit confidence instead."
     )
-    db.add(diagnosis)
-    await db.commit()
-    await db.refresh(diagnosis)
-    return diagnosis
 
 
 @router.get("", response_model=list[DiagnosisResponse])

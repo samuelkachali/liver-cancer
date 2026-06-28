@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.dependencies import require_roles
+from app.log_actions import log_action
 from app.models.patient import Patient
 from app.models.user import User, UserRole, UserStatus
 from app.schemas import AssignDoctorRequest, PatientCreate, PatientResponse, PatientUpdate
@@ -61,6 +62,16 @@ async def create_patient(
     db.add(patient)
     await db.commit()
     await db.refresh(patient)
+    
+    await log_action(
+        db=db,
+        actor_id=nurse.id,
+        action="create_patient",
+        resource_type="patient",
+        resource_id=patient.id,
+        details={"hospital_number": patient.hospital_number, "name": patient.name},
+    )
+    
     return patient
 
 
@@ -131,4 +142,14 @@ async def assign_doctor(
     patient.assigned_doctor_id = payload.doctor_id
     await db.commit()
     await db.refresh(patient)
+    
+    await log_action(
+        db=db,
+        actor_id=patient.created_by,
+        action="assign_doctor",
+        resource_type="patient",
+        resource_id=patient.id,
+        details={"doctor_id": str(payload.doctor_id), "hospital_number": patient.hospital_number},
+    )
+    
     return patient
