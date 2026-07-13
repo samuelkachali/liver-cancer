@@ -1,17 +1,23 @@
 import base64
 import cv2
 import logging
+import sys
 from pathlib import Path
 
 import numpy as np
 import torch
 
+from app.ml import model_def
 from app.ml.preprocessing import (
     TUMOR_DETECTION_THRESHOLD,
     build_segmentation_overlay,
     encode_overlay_png,
     preprocess_image,
 )
+
+# The checkpoint was saved with this class living in `__main__`, so pickle
+# looks for it there. Remap it to our module so torch.load can rebuild it.
+sys.modules["__main__"].MobileNetClassifier = model_def.MobileNetClassifier
 
 logger = logging.getLogger(__name__)
 
