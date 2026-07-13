@@ -28,11 +28,15 @@ export async function apiRequest<T>(
     throw new Error(message || 'Request failed');
   }
 
-  if (response.status === 204 || !response.headers.get('content-length')) {
+  if (response.status === 204) {
     return null as unknown as T;
   }
 
-  return response.json();
+  try {
+    return await response.json();
+  } catch {
+    return null as unknown as T;
+  }
 }
 
 export const api = {

@@ -68,6 +68,10 @@ function DoctorDiagnosisPage() {
     setLoading(true);
     try {
       const response = await api.diagnoses.runAi(selectedPatientId, image);
+      if (!response) {
+        console.error("Run diagnosis returned no data");
+        return;
+      }
       const created = response as any;
       setResult({
         type: created.cancer_type || "liver",
