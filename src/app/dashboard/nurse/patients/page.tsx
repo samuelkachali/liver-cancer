@@ -19,6 +19,9 @@ interface PatientRow {
   age: number;
   gender: string;
   symptoms: string | null;
+  contact: string | null;
+  address: string | null;
+  file_url: string | null;
   assigned_doctor_id: string | null;
 }
 
@@ -34,6 +37,7 @@ export default function NursePatientsListPage() {
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [viewing, setViewing] = useState<PatientRow | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -155,7 +159,7 @@ export default function NursePatientsListPage() {
                       </Select>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline">
+                      <Button size="sm" variant="outline" onClick={() => setViewing(p)}>
                         View
                       </Button>
                     </TableCell>
@@ -166,6 +170,67 @@ export default function NursePatientsListPage() {
           </Table>
         </div>
       </DashboardCard>
+
+      {viewing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Details for ${viewing.name}`}
+          onClick={() => setViewing(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-xl border border-zinc-200 bg-white shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between border-b border-zinc-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-zinc-900">{viewing.name}</h2>
+                <p className="text-sm text-zinc-600">{viewing.hospital_number}</p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                className="rounded-md p-1 text-zinc-500 hover:bg-zinc-100"
+                onClick={() => setViewing(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="max-h-[70vh] space-y-4 overflow-y-auto p-5">
+              {viewing.file_url && (
+                <img
+                  src={viewing.file_url}
+                  alt={`${viewing.name} image`}
+                  className="h-48 w-full rounded-lg border border-zinc-200 object-cover"
+                />
+              )}
+              <dl className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <dt className="text-zinc-500">Age</dt>
+                  <dd className="font-medium text-zinc-900">{viewing.age}</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Gender</dt>
+                  <dd className="font-medium capitalize text-zinc-900">{viewing.gender}</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Contact</dt>
+                  <dd className="font-medium text-zinc-900">{viewing.contact || "—"}</dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500">Address</dt>
+                  <dd className="font-medium text-zinc-900">{viewing.address || "—"}</dd>
+                </div>
+              </dl>
+              <div>
+                <dt className="text-sm text-zinc-500">Symptoms</dt>
+                <dd className="mt-1 whitespace-pre-wrap text-sm text-zinc-900">{viewing.symptoms || "—"}</dd>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardCard from "@/components/DashboardCard";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ interface AssignedRow {
 }
 
 export default function DoctorAssignedPatientsPage() {
+  const router = useRouter();
   const [assigned, setAssigned] = useState<AssignedRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -75,7 +77,11 @@ export default function DoctorAssignedPatientsPage() {
                     <TableCell>{a.age}</TableCell>
                     <TableCell className="capitalize">{a.gender}</TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => router.push(`/dashboard/doctor/diagnosis?patient=${a.id}`)}
+                      >
                         Open
                       </Button>
                     </TableCell>

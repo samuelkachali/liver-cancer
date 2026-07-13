@@ -24,7 +24,7 @@ export default function PatientForm({ onSuccess }: PatientFormProps) {
   const [patientId, setPatientId] = useState("");
   const [contact, setContact] = useState("");
   const [address, setAddress] = useState("");
-  const [fileName, setFileName] = useState<string>("");
+  const [fileData, setFileData] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -45,7 +45,7 @@ export default function PatientForm({ onSuccess }: PatientFormProps) {
         contact: contact || undefined,
         address: address || undefined,
         symptoms: symptoms || undefined,
-        file_url: fileName || undefined,
+        file_url: fileData || undefined,
       });
       setName("");
       setAge("");
@@ -54,7 +54,7 @@ export default function PatientForm({ onSuccess }: PatientFormProps) {
       setPatientId("");
       setContact("");
       setAddress("");
-      setFileName("");
+      setFileData(null);
       onSuccess?.();
     } catch (err: any) {
       setError(err?.message || "Failed to add patient");
@@ -103,9 +103,26 @@ export default function PatientForm({ onSuccess }: PatientFormProps) {
         <Textarea value={symptoms} onChange={(e) => setSymptoms(e.target.value)} placeholder="Describe symptoms" rows={3} />
       </div>
       <div>
-        <label className="block text-sm text-zinc-700 mb-1">Upload Patient File (optional)</label>
-        <Input type="file" accept=".pdf,.doc,.docx,.txt" onChange={(e) => setFileName(e.target.files?.[0]?.name || "")} />
-        {fileName && <p className="mt-1 text-xs text-zinc-500">Selected: {fileName}</p>}
+        <label className="block text-sm text-zinc-700 mb-1">Upload Patient Image (optional)</label>
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = () => {
+                setFileData(reader.result as string);
+              };
+              reader.readAsDataURL(file);
+            } else {
+              setFileData(null);
+            }
+          }}
+        />
+        {fileData && (
+          <img src={fileData} alt="Patient preview" className="mt-2 h-32 w-32 rounded-lg border border-zinc-200 object-cover" />
+        )}
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">

@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardCard from "@/components/DashboardCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,24 +12,38 @@ interface PatientOption {
   id: string;
   hospital_number: string;
   name: string;
+  file_url: string | null;
 }
 
-export default function DoctorDiagnosisPage() {
+function readImageAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function DoctorDiagnosisPage() {
+  const searchParams = useSearchParams();
+  const presetPatientId = searchParams.get("patient") || "";
+
   const [patients, setPatients] = useState<PatientOption[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState<string>("");
+  const [selectedPatientId, setSelectedPatientId] = useState<string>(presetPatientId);
   const [confidence, setConfidence] = useState<string>("");
-  const [fileName, setFileName] = useState<string>("");
-  const [result, setResult] = useState<{ type: string; conf: number; at: string } | null>(null);
+  const [extraImages, setExtraImages] = useState<string[]>([]);
+  const [result, setResult] = useState<{ type: string; conf: number; at: string; scan_url?: string | null } | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const fetchPatients = async () => {
       try {
         const data = await api.patients.list();
-        const mapped = (data as any[]).map((p) => ({
+        const mapped = (data as PatientOption[]).map((p) => ({
           id: p.id,
           hospital_number: p.hospital_number,
           name: p.name,
+          file_url: p.file_url ?? null,
         }));
         setPatients(mapped);
       } catch (error) {
@@ -38,6 +53,14 @@ export default function DoctorDiagnosisPage() {
     fetchPatients();
   }, []);
 
+  const selectedPatient = patients.find((p) => p.id === selectedPatientId) || null;
+
+  const handleAddImages = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const dataUrls = await Promise.all(Array.from(files).map(readImageAsDataUrl));
+    setExtraImages((prev) => [...prev, ...dataUrls]);
+  };
+
   const handleRun = async () => {
     if (!selectedPatientId || !confidence) return;
     setLoading(true);
@@ -46,13 +69,14 @@ export default function DoctorDiagnosisPage() {
       const response = await api.diagnoses.create({
         patient_id: selectedPatientId,
         confidence: conf,
-        scan_url: fileName || undefined,
+        scan_url: extraImages.length ? JSON.stringify(extraImages) : undefined,
       });
       const created = response as any;
       setResult({
         type: created.cancer_type || "liver",
         conf: Number(created.confidence),
         at: new Date(created.created_at).toLocaleString(),
+        scan_url: created.scan_url ?? null,
       });
     } catch (error) {
       console.error("Failed to run diagnosis:", error);
@@ -60,6 +84,16 @@ export default function DoctorDiagnosisPage() {
       setLoading(false);
     }
   };
+
+  const resultImages: string[] = (() => {
+    if (!result?.scan_url) return [];
+    try {
+      const parsed = JSON.parse(result.scan_url);
+      return Array.isArray(parsed) ? parsed : [result.scan_url];
+    } catch {
+      return [result.scan_url];
+    }
+  })();
 
   return (
     <div className="space-y-6">
@@ -81,6 +115,18 @@ export default function DoctorDiagnosisPage() {
               </SelectContent>
             </Select>
           </div>
+
+          {selectedPatient?.file_url && (
+            <div className="space-y-1">
+              <div className="text-sm font-medium text-zinc-700">Patient Image</div>
+              <img
+                src={selectedPatient.file_url}
+                alt={`${selectedPatient.name} image`}
+                className="h-48 w-full rounded-lg border border-zinc-200 object-cover"
+              />
+            </div>
+          )}
+
           <div className="space-y-1">
             <div className="text-sm font-medium text-zinc-700">Confidence (%)</div>
             <Input
@@ -93,16 +139,35 @@ export default function DoctorDiagnosisPage() {
               placeholder="0 - 100"
             />
           </div>
+
           <div className="space-y-1">
-            <div className="text-sm font-medium text-zinc-700">Upload Scan</div>
+            <div className="text-sm font-medium text-zinc-700">Add Extra Images (optional)</div>
             <Input
               id="scan"
               type="file"
               accept="image/*"
-              onChange={(e) => setFileName(e.target.files?.[0]?.name || "")}
+              multiple
+              onChange={(e) => handleAddImages(e.target.files)}
             />
-            {fileName && <div className="text-xs text-zinc-500">Selected: {fileName}</div>}
+            {extraImages.length > 0 && (
+              <div className="mt-2 grid grid-cols-3 gap-2">
+                {extraImages.map((src, idx) => (
+                  <div key={idx} className="relative">
+                    <img src={src} alt={`extra ${idx + 1}`} className="h-24 w-full rounded-lg border border-zinc-200 object-cover" />
+                    <button
+                      type="button"
+                      aria-label={`Remove image ${idx + 1}`}
+                      className="absolute -top-2 -right-2 rounded-full bg-red-500 px-1.5 text-xs text-white"
+                      onClick={() => setExtraImages((prev) => prev.filter((_, i) => i !== idx))}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
           <Button
             className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={handleRun}
@@ -112,6 +177,7 @@ export default function DoctorDiagnosisPage() {
           </Button>
         </div>
       </DashboardCard>
+
       {result && (
         <Card className="shadow-sm rounded-xl">
           <CardHeader>
@@ -129,9 +195,24 @@ export default function DoctorDiagnosisPage() {
               </div>
             </div>
             <div className="mt-2 text-xs text-zinc-500">{result.at}</div>
+            {resultImages.length > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {resultImages.map((src, idx) => (
+                  <img key={idx} src={src} alt={`scan ${idx + 1}`} className="h-24 w-full rounded-lg border border-zinc-200 object-cover" />
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
     </div>
+  );
+}
+
+export default function DoctorDiagnosisPageWrapper() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-zinc-600">Loading...</div>}>
+      <DoctorDiagnosisPage />
+    </Suspense>
   );
 }
