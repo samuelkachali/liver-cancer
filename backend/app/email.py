@@ -14,12 +14,26 @@ async def send_email(to_email: str, subject: str, body: str) -> bool:
     message["Subject"] = subject
     message.set_content(body)
 
-    try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-            server.starttls()
-            server.login(settings.smtp_user, settings.smtp_password)
-            server.send_message(message)
-        return True
-    except Exception as exc:  # noqa: BLE001
-        print(f"Failed to send email to {to_email}: {exc}")
-        return False
+async def send_verification_email(to_email: str, full_name: str) -> bool:
+    return await send_email(
+        to_email=to_email,
+        subject="Your MediVision AI account has been verified",
+        body=(
+            f"Hi {full_name},\n\n"
+            f"Your MediVision AI account has been verified by an admin. "
+            f"You can now sign in and use the platform.\n\n"
+            f"If you did not request this account, you can safely ignore this email."
+        ),
+    )
+
+
+async def send_rejection_email(to_email: str, full_name: str) -> bool:
+    return await send_email(
+        to_email=to_email,
+        subject="Your MediVision AI account was not approved",
+        body=(
+            f"Hi {full_name},\n\n"
+            f"Unfortunately, your MediVision AI account registration was rejected by an admin. "
+            f"If you believe this was a mistake, please contact support.\n\n"
+        ),
+    )
