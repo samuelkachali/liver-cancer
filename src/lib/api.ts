@@ -53,6 +53,16 @@ export const api = {
       apiRequest('/api/auth/logout', {
         method: 'POST',
       }),
+    forgotPassword: (email: string) =>
+      apiRequest('/api/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
+    resetPassword: (token: string, new_password: string) =>
+      apiRequest('/api/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, new_password }),
+      }),
     me: () => apiRequest('/api/auth/me'),
   },
   patients: {
@@ -79,8 +89,13 @@ export const api = {
       }),
     assignDoctor: (id: string, doctor_id: string) =>
       apiRequest(`/api/patients/${id}/assign-doctor`, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify({ doctor_id }),
+      }),
+    unassignDoctor: (id: string) =>
+      apiRequest(`/api/patients/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ assigned_doctor_id: null }),
       }),
   },
   diagnoses: {

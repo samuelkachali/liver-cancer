@@ -35,6 +35,27 @@ def decode_access_token(token: str) -> dict:
     return jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
 
 
+def create_reset_token(user_id: uuid.UUID) -> tuple[str, datetime]:
+    expires_at = datetime.now(UTC) + timedelta(minutes=settings.reset_token_expire_minutes)
+    payload = {
+        "sub": str(user_id),
+        "type": "reset",
+        "exp": expires_at,
+    }
+    token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+    return token, expires_at
+
+
+def verify_reset_token(token: str) -> uuid.UUID:
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+    except (JWTError, ValueError) as exc:
+        raise ValueError("Invalid or expired reset token") from exc
+    if payload.get("type") != "reset":
+        raise ValueError("Invalid reset token")
+    return uuid.UUID(payload["sub"])
+
+
 async def is_token_blacklisted(db: AsyncSession, jti: uuid.UUID) -> bool:
     result = await db.execute(select(TokenBlacklist).where(TokenBlacklist.jti == jti))
     return result.scalar_one_or_none() is not None

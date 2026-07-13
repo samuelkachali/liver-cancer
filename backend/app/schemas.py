@@ -40,6 +40,21 @@ class TokenResponse(BaseModel):
     user: UserResponse
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    dev_reset_token: str | None = None
+    dev_reset_url: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class PatientCreate(BaseModel):
     hospital_number: str = Field(min_length=3, max_length=50)
     name: str = Field(min_length=2, max_length=255)

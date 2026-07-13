@@ -55,7 +55,7 @@ export default function Sidebar() {
     ? [
         { href: "/dashboard/nurse", label: "Dashboard Overview", icon: Home },
         { href: "/dashboard/nurse/add-patient", label: "Add Patient", icon: UserPlus },
-        { href: "/dashboard/nurse/assign-doctor", label: "Assign Doctor", icon: Stethoscope },
+        { href: "/dashboard/nurse/doctors", label: "Doctors", icon: Stethoscope },
         { href: "/dashboard/nurse/patients", label: "Patients List", icon: ClipboardList },
         { href: "/dashboard/nurse/reports", label: "Reports", icon: FileText },
         { href: "/dashboard/nurse/settings", label: "Settings", icon: Settings },

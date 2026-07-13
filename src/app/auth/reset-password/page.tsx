@@ -1,52 +1,63 @@
 "use client";
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { api } from "@/lib/api";
 
-interface ForgotResponse {
-  message: string;
-  dev_reset_token?: string | null;
-  dev_reset_url?: string | null;
-}
+function ResetPasswordContent() {
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token") || "";
 
-export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ForgotResponse | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    if (!token) setError("Missing or invalid reset token");
+  }, [token]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!email) {
-      setError("Please enter your email");
+    if (!token) {
+      setError("Missing or invalid reset token");
+      return;
+    }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      return;
+    }
+    if (password !== confirm) {
+      setError("Passwords do not match");
       return;
     }
     setLoading(true);
     try {
-      const res = (await api.auth.forgotPassword(email)) as ForgotResponse;
-      setResult(res);
+      await api.auth.resetPassword(token, password);
+      setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : "Failed to reset password");
     } finally {
       setLoading(false);
     }
   };
 
-  if (result) {
+  if (success) {
     return (
       <div className="min-h-screen bg-white flex">
         <div className="hidden lg:block lg:w-1/2 relative">
           <Image src="/liver.jpg" width={800} height={600} alt="Medical healthcare illustration" className="object-cover" priority />
           <div className="absolute inset-0 bg-linear-to-r from-blue-900/60 to-blue-900/30" />
           <div className="absolute bottom-12 left-12 text-white max-w-sm">
-            <h2 className="text-3xl font-bold mb-3">You&apos;ve got mail</h2>
-            <p className="text-blue-100">Follow the instructions to securely reset your password.</p>
+            <h2 className="text-3xl font-bold mb-3">All set</h2>
+            <p className="text-blue-100">Your password has been updated. Sign in with your new credentials.</p>
           </div>
         </div>
         <motion.div
@@ -61,20 +72,15 @@ export default function ForgotPasswordPage() {
                 <Image src="/logo.svg" alt="MediVision AI logo" width={36} height={36} />
                 <span className="font-bold text-xl text-blue-900">MediVision AI</span>
               </div>
-              <CardTitle className="text-3xl text-zinc-900">Check your inbox</CardTitle>
-              <p className="text-zinc-600">{result.message}</p>
+              <CardTitle className="text-3xl text-zinc-900">Password updated</CardTitle>
+              <p className="text-zinc-600">Your password has been reset successfully.</p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {result.dev_reset_url && (
-                <Link href={result.dev_reset_url}>
-                  <Button className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white transition-all text-base font-medium">
-                    Continue to reset password
-                  </Button>
-                </Link>
-              )}
-              <div className="text-sm text-zinc-600 text-center">
-                Remembered it? <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">Back to login</Link>
-              </div>
+            <CardContent>
+              <Link href="/auth/login">
+                <Button className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white transition-all text-base font-medium">
+                  Back to login
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </motion.div>
@@ -104,8 +110,8 @@ export default function ForgotPasswordPage() {
               <Image src="/logo.svg" alt="MediVision AI logo" width={36} height={36} />
               <span className="font-bold text-xl text-blue-900">MediVision AI</span>
             </div>
-            <CardTitle className="text-3xl text-zinc-900">Forgot password</CardTitle>
-            <p className="text-zinc-600">Enter your email and we&apos;ll send you a reset link</p>
+            <CardTitle className="text-3xl text-zinc-900">Reset password</CardTitle>
+            <p className="text-zinc-600">Choose a new password for your account</p>
           </CardHeader>
           <CardContent>
             <form className="space-y-5" onSubmit={onSubmit}>
@@ -113,13 +119,25 @@ export default function ForgotPasswordPage() {
                 <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg">{error}</div>
               )}
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-zinc-700">Email</label>
+                <label className="block text-sm font-medium text-zinc-700">New password</label>
                 <Input
-                  type="email"
-                  placeholder="you@example.com"
-                  aria-label="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="password"
+                  placeholder="••••••••"
+                  aria-label="New password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={loading}
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-zinc-700">Confirm password</label>
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  aria-label="Confirm password"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
                   disabled={loading}
                   className="h-11"
                 />
@@ -127,9 +145,9 @@ export default function ForgotPasswordPage() {
               <Button
                 type="submit"
                 className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white transition-all text-base font-medium"
-                disabled={loading}
+                disabled={loading || !token}
               >
-                {loading ? "Sending..." : "Send reset link"}
+                {loading ? "Resetting..." : "Reset password"}
               </Button>
             </form>
             <div className="mt-6 text-sm text-zinc-600 text-center">
@@ -139,5 +157,13 @@ export default function ForgotPasswordPage() {
         </Card>
       </motion.div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-zinc-600">Loading...</div>}>
+      <ResetPasswordContent />
+    </Suspense>
   );
 }
