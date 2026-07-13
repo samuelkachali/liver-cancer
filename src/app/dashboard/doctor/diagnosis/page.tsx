@@ -30,7 +30,6 @@ function DoctorDiagnosisPage() {
 
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [selectedPatientId, setSelectedPatientId] = useState<string>(presetPatientId);
-  const [confidence, setConfidence] = useState<string>("");
   const [extraImages, setExtraImages] = useState<string[]>([]);
   const [result, setResult] = useState<{ type: string; conf: number; at: string; scan_url?: string | null } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,6 +53,7 @@ function DoctorDiagnosisPage() {
   }, []);
 
   const selectedPatient = patients.find((p) => p.id === selectedPatientId) || null;
+  const hasImage = extraImages.length > 0 || Boolean(selectedPatient?.file_url);
 
   const handleAddImages = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -62,15 +62,12 @@ function DoctorDiagnosisPage() {
   };
 
   const handleRun = async () => {
-    if (!selectedPatientId || !confidence) return;
+    if (!selectedPatientId) return;
+    const image = extraImages[0] ?? selectedPatient?.file_url ?? null;
+    if (!image) return;
     setLoading(true);
     try {
-      const conf = parseFloat(confidence);
-      const response = await api.diagnoses.create({
-        patient_id: selectedPatientId,
-        confidence: conf,
-        scan_url: extraImages.length ? JSON.stringify(extraImages) : undefined,
-      });
+      const response = await api.diagnoses.runAi(selectedPatientId, image);
       const created = response as any;
       setResult({
         type: created.cancer_type || "liver",
@@ -128,19 +125,6 @@ function DoctorDiagnosisPage() {
           )}
 
           <div className="space-y-1">
-            <div className="text-sm font-medium text-zinc-700">Confidence (%)</div>
-            <Input
-              id="confidence"
-              type="number"
-              min={0}
-              max={100}
-              value={confidence}
-              onChange={(e) => setConfidence(e.target.value)}
-              placeholder="0 - 100"
-            />
-          </div>
-
-          <div className="space-y-1">
             <div className="text-sm font-medium text-zinc-700">Add Extra Images (optional)</div>
             <Input
               id="scan"
@@ -171,7 +155,7 @@ function DoctorDiagnosisPage() {
           <Button
             className="bg-blue-600 hover:bg-blue-700 text-white"
             onClick={handleRun}
-            disabled={!selectedPatientId || !confidence || loading}
+            disabled={!selectedPatientId || !hasImage || loading}
           >
             {loading ? "Running..." : "Run Diagnosis"}
           </Button>

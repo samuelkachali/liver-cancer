@@ -1,3 +1,5 @@
+import base64
+import logging
 import uuid
 from decimal import Decimal
 
@@ -11,9 +13,11 @@ from app.log_actions import log_action
 from app.models.diagnosis import Diagnosis, DiagnosisStatus
 from app.models.patient import Patient
 from app.models.user import User, UserRole
-from app.schemas import DiagnosisCreate, DiagnosisResponse, DiagnosisUpdate
+from app.schemas import DiagnosisCreate, DiagnosisResponse, DiagnosisUpdate, RunAiRequest
 
 router = APIRouter(prefix="/diagnoses", tags=["diagnoses"])
+
+logger = logging.getLogger(__name__)
 
 CANCER_TYPE = "liver"
 
@@ -64,9 +68,9 @@ async def create_diagnosis(
 @router.post("/run-ai/{patient_id}", response_model=DiagnosisResponse, status_code=status.HTTP_201_CREATED)
 async def run_ai_diagnosis(
     patient_id: uuid.UUID,
+    payload: RunAiRequest,
     db: AsyncSession = Depends(get_db),
     doctor: User = Depends(require_roles(UserRole.doctor)),
-    scan_url: str | None = None,
 ) -> Diagnosis:
     result = await db.execute(select(Patient).where(Patient.id == patient_id))
     patient = result.scalar_one_or_none()
@@ -75,10 +79,50 @@ async def run_ai_diagnosis(
     if patient.assigned_doctor_id != doctor.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Patient not assigned to you")
 
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="AI diagnosis endpoint requires integration with ML model. Use POST /diagnoses with explicit confidence instead."
+    image_data_url = payload.image or patient.file_url
+    if not image_data_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No image available for AI diagnosis. Upload a scan or patient image first.",
+        )
+
+    try:
+        from app.ml.model import decode_data_url, run_diagnosis
+
+        image_bytes = decode_data_url(image_data_url)
+        ai = run_diagnosis(image_bytes)
+    except Exception as exc:
+        logger.exception("AI diagnosis failed")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI diagnosis failed: {exc}",
+        ) from exc
+
+    overlay_data_url = f"data:image/png;base64,{base64.b64encode(ai['overlay_png']).decode()}"
+
+    diagnosis = Diagnosis(
+        patient_id=patient.id,
+        doctor_id=doctor.id,
+        cancer_type=ai["cancer_type"],
+        confidence=ai["confidence"],
+        scan_url=overlay_data_url,
+        notes=f"Tumor detected: {ai['tumor_detected']}. Tumor coverage: {ai['coverage']:.4f}",
+        status=DiagnosisStatus.pending,
     )
+    db.add(diagnosis)
+    await db.commit()
+    await db.refresh(diagnosis)
+
+    await log_action(
+        db=db,
+        actor_id=doctor.id,
+        action="run_ai_diagnosis",
+        resource_type="diagnosis",
+        resource_id=diagnosis.id,
+        details={"patient_id": str(patient.id), "cancer_type": ai["cancer_type"], "tumor_detected": ai["tumor_detected"]},
+    )
+
+    return diagnosis
 
 
 @router.get("", response_model=list[DiagnosisResponse])

@@ -119,6 +119,11 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
+    runAi: (patientId: string, image: string) =>
+      apiRequest(`/api/diagnoses/run-ai/${patientId}`, {
+        method: 'POST',
+        body: JSON.stringify({ image }),
+      }),
   },
   admin: {
     users: () => apiRequest('/api/admin/users'),

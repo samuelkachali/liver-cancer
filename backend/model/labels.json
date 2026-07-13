@@ -1,0 +1,4 @@
+{
+  "classes": ["Background", "Tumor"],
+  "description": "Liver tumor segmentation class labels"
+}

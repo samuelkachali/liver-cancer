@@ -112,6 +112,10 @@ class DiagnosisUpdate(BaseModel):
     status: DiagnosisStatus | None = None
 
 
+class RunAiRequest(BaseModel):
+    image: str | None = None
+
+
 class DiagnosisResponse(BaseModel):
     id: UUID
     patient_id: UUID

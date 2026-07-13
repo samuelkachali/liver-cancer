@@ -8,3 +8,11 @@ python-jose[cryptography]==3.3.0
 bcrypt==4.2.1
 python-multipart==0.0.20
 httpx==0.28.1
+
+# ML / diagnosis model
+numpy==1.26.4
+Pillow==11.0.0
+opencv-python-headless==4.10.0.84
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.6.0+cpu
+torchvision==0.21.0+cpu
